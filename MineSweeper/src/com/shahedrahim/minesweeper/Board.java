@@ -2,21 +2,37 @@ package com.shahedrahim.minesweeper;
 
 import java.util.Random;
 
+/**
+ * This is the board for the mine sweeper game
+ * @author shahe
+ *
+ */
 class Board {
     private static final String TAG = "Board";
 
+    // Number of ROWS
     public static final int ROWS = 10;
+    // Number of COLS
     public static final int COLS = 10;
+    // Board Size
     public static final int BOARDSIZE = ROWS * COLS;
 
+    // Status of cells on the board
     private static final int BOMB = -2;
     private static final int UNDISTURBED = -1;
     private static final int NO_BOMB = 0;
 
+    // Array of booleans showing where the bombs are placed
     private Boolean[] bombs;
+    // Array of integers showing the status of the board
     private Integer[] board;
 
+    /**
+     * Constructor: accepts the number of bombs to be introduced in the game
+     * @param numBombs
+     */
     public Board(int numBombs) {
+    	//Initialize the board
         bombs = new Boolean[BOARDSIZE];
         board = new Integer[BOARDSIZE];
 
@@ -25,6 +41,7 @@ class Board {
             board[i] = UNDISTURBED;
         }
 
+        //Insert bombs
         Random r = new Random();
         for (int i=0; i<numBombs; i++) {
             int bombPos = (int) r.nextInt(BOARDSIZE);
@@ -33,6 +50,11 @@ class Board {
         }
     }
 
+    /**
+     * Simulates a click on the board
+     * @param pos
+     * @return boolean if the click was on a bomb
+     */
     public boolean click(int pos) {
         if (pos<BOARDSIZE && pos>=0) {
             if (bombs[pos]) {
@@ -47,6 +69,11 @@ class Board {
         }
     }
 
+    /**
+     * count the number of bombs around the cell at position pos
+     * @param pos
+     * @return number of bombs in neighboring cells
+     */
     private int countNeighborBombs(int pos) {
         int count = 0;
         if (pos>9) {
@@ -143,6 +170,9 @@ class Board {
     	}
     }
     
+    /**
+     * Prints the board onto the console
+     */
     void printBoard() {
     	for (int i = 0; i<ROWS; i++ ) {
     		for (int j=0; j<COLS; j++) {
