@@ -1,5 +1,8 @@
 package com.shahedrahim.minesweeper;
 
+//import android.util.Log;
+
+import java.util.ArrayList;
 import java.util.Random;
 
 /**
@@ -8,14 +11,14 @@ import java.util.Random;
  *
  */
 class Board {
-    private static final String TAG = "Board";
+//    private static final String TAG = "Board";
 
-    // Number of ROWS
-    public static final int ROWS = 10;
-    // Number of COLS
-    public static final int COLS = 10;
+    // Number of numRows
+    public int numRows;
+    // Number of numCols
+    public int numCols;
     // Board Size
-    public static final int BOARDSIZE = ROWS * COLS;
+    public int boardSize;
 
     // Status of cells on the board
     private static final int BOMB = -2;
@@ -23,31 +26,51 @@ class Board {
     private static final int NO_BOMB = 0;
 
     // Array of booleans showing where the bombs are placed
-    private Boolean[] bombs;
+    private Boolean[][] bombs;
+
+    private ArrayList<Integer> bombPositions;
     // Array of integers showing the status of the board
-    private Integer[] board;
+    private Integer[][] board;
 
     /**
      * Constructor: accepts the number of bombs to be introduced in the game
      * @param numBombs
      */
-    public Board(int numBombs) {
-    	//Initialize the board
-        bombs = new Boolean[BOARDSIZE];
-        board = new Integer[BOARDSIZE];
+    public Board(int numBombs, int numRows, int numCols) {
+        this.numRows = numRows;
+        this.numCols = numCols;
+        this.boardSize  = numRows * numCols;
+        //Initialize the board
+        bombs = new Boolean[numRows][numCols];
+        board = new Integer[numRows][numCols];
+        bombPositions = new ArrayList<>();
 
-        for (int i= 0;  i<BOARDSIZE; i++) {
-            bombs[i] = false;
-            board[i] = UNDISTURBED;
+        for (int i = 0; i< numRows; i++) {
+            for (int j = 0; j< numCols; j++) {
+                bombs[i][j] = false;
+                board[i][j] = UNDISTURBED;
+            }
         }
 
         //Insert bombs
         Random r = new Random();
         for (int i=0; i<numBombs; i++) {
-            int bombPos = (int) r.nextInt(BOARDSIZE);
-            //TODO check if there is a bomb there already, to get exact number of bombs
-            bombs[bombPos] = true;
+            int bombPos;
+            // Repeat until empty slot found
+            do {
+                bombPos = (int) r.nextInt(boardSize);
+            } while (bombs[rpos(bombPos)][cpos(bombPos)]);
+            bombs[rpos(bombPos)][cpos(bombPos)] = true;
+            bombPositions.add(bombPos);
         }
+    }
+
+    private int rpos(int pos) {
+        return pos/ numCols;
+    }
+
+    private int cpos(int pos) {
+        return pos% numCols;
     }
 
     /**
@@ -55,13 +78,19 @@ class Board {
      * @param pos
      * @return boolean if the click was on a bomb
      */
-    public boolean click(int pos) {
-        if (pos<BOARDSIZE && pos>=0) {
-            if (bombs[pos]) {
-            	board[pos] = BOMB;
+    /**
+     * Simulates a click on the board
+     * @param rpos row position
+     * @param cpos column position
+     * @return boolean if the click was on a bomb
+     */
+    public boolean click(int rpos, int cpos) {
+        if ((rpos< numRows && rpos>=0)&&(cpos< numCols && cpos>=0)) {
+            if (bombs[rpos][cpos]) {
+                board[rpos][cpos] = BOMB;
                 return true; //Found the bomb
             } else {
-                exposeBoard(pos);
+                exposeBoard(rpos, cpos);
                 return false;
             }
         } else {
@@ -70,55 +99,55 @@ class Board {
     }
 
     /**
-     * count the number of bombs around the cell at position pos
-     * @param pos
-     * @return number of bombs in neighboring cells
+     * this method counts the number of bombs in the immediate vicinity of the position
+     * @param rpos
+     * @param cpos
+     * @return number of bombs
      */
-    private int countNeighborBombs(int pos) {
+    private int countNeighborBombs(int rpos, int cpos) {
         int count = 0;
-        if (pos>9) {
-            if (bombs[pos-10]) {
+        if (rpos>0) {
+            if (bombs[rpos-1][cpos]) {
                 count++;
             }
         }
-        if (pos<90) {
-            if (bombs[pos+10]) {
-                count++;
-            }
-        }
-
-        if (pos % COLS>0) {
-            if (bombs[pos-1]) {
+        if (rpos<numRows-1) {
+            if (bombs[rpos+1][cpos]) {
                 count++;
             }
         }
 
-        if (pos % COLS<9) {
-            if (bombs[pos+1]) {
+        if (cpos >0) {
+            if (bombs[rpos][cpos-1]) {
                 count++;
             }
         }
 
-        if (pos>9 && pos % COLS>0) {
-            if (bombs[pos-11]) {
+        if (cpos < numCols-1) {
+            if (bombs[rpos][cpos+1]) {
                 count++;
             }
         }
 
-        if (pos>9 && pos % COLS<9) {
-            if (bombs[pos-9]) {
+        if (rpos>0 && cpos >0) {
+            if (bombs[rpos-1][cpos-1]) {
+                count++;
+            }
+        }
+        if (rpos<numRows-1 && cpos >0) {
+            if (bombs[rpos+1][cpos-1]) {
                 count++;
             }
         }
 
-        if (pos<90 && pos % COLS>0) {
-            if (bombs[pos+9]) {
+        if (rpos>0 && cpos < numCols-1) {
+            if (bombs[rpos-1][cpos+1]) {
                 count++;
             }
         }
 
-        if (pos<90 && pos % COLS<9) {
-            if (bombs[pos+11]) {
+        if (rpos<numRows-1 && cpos < numCols-1) {
+            if (bombs[rpos+1][cpos+1]) {
                 count++;
             }
         }
@@ -127,66 +156,81 @@ class Board {
 
     /**
      * recursive function that finds and exposes all empty cells
-     * @param pos
+     * @param rpos
+     * @param cpos
      */
-    private void exposeBoard(int pos) {
-    	if (board[pos] == UNDISTURBED) {
-            int countBombsAround = countNeighborBombs(pos);
+    private void exposeBoard(int rpos, int cpos) {
+        if (board[rpos][cpos] == UNDISTURBED) {
+            int countBombsAround = countNeighborBombs(rpos, cpos);
             if (countBombsAround==NO_BOMB) {
-            	board[pos] = NO_BOMB;
-                if (pos>9) {
-                    exposeBoard(pos-10);
-                }
-                if (pos<90) {
-                    exposeBoard(pos+10);
+                board[rpos][cpos] = NO_BOMB;
+                if (rpos>0) {
+                    exposeBoard(rpos-1, cpos);
                 }
 
-                if (pos % COLS>0) {
-                    exposeBoard(pos-1);
+                if (rpos< numRows -1) {
+                    exposeBoard(rpos+1, cpos);
                 }
 
-                if (pos % COLS<9) {
-                    exposeBoard(pos+1);
+                if (cpos > 0) {
+                    exposeBoard(rpos, cpos-1);
                 }
 
-                if (pos>9 && pos % COLS>0) {
-                    exposeBoard(pos-11);
+                if (cpos < numCols -1) {
+                    exposeBoard(rpos, cpos+1);
                 }
 
-                if (pos>9 && pos % COLS<9) {
-                    exposeBoard(pos-9);
+                if (rpos>0 && cpos >0) {
+                    exposeBoard(rpos-1, cpos-1);
+                }
+                if (rpos<numRows-1 && cpos >0) {
+                    exposeBoard(rpos+1, cpos-1);
                 }
 
-                if (pos<90 && pos % COLS>0) {
-                    exposeBoard(pos+9);
+                if (rpos>0 && cpos < numCols-1) {
+                    exposeBoard(rpos-1, cpos+1);
                 }
 
-                if (pos<90 && pos % COLS<9) {
-                    exposeBoard(pos+11);
+                if (rpos<numRows-1 && cpos < numCols-1) {
+                    exposeBoard(rpos+1, cpos+1);
                 }
             } else {
-                board[pos] = countBombsAround;
+                board[rpos][cpos] = countBombsAround;
             }
-    	}
+        }
     }
-    
+
+
+    public String toString() {
+        String val = "";
+        for (int i = 0; i< numRows; i++ ) {
+            for (int j = 0; j< numCols; j++) {
+                if (board[i][j]==UNDISTURBED) {
+                    val+="U";
+                } else if (board[i][j]==NO_BOMB) {
+                    val+=" ";
+                } else if (board[i][j]==BOMB) {
+                    val+="X";
+                } else {
+                    val+= ""+board[i][j];
+                }
+            }
+            val+="\n";
+        }
+        return val;
+    }
+
     /**
      * Prints the board onto the console
      */
-    void printBoard() {
-    	for (int i = 0; i<ROWS; i++ ) {
-    		for (int j=0; j<COLS; j++) {
-    			if (board[10*i+j]==UNDISTURBED) {
-    				System.out.print("U");
-    			} else if (board[10*i+j]==NO_BOMB) {
-    				System.out.print(" ");
-    			} else if (board[10*i+j]==BOMB) {
-    				System.out.print("X");
-    			} else {
-    				System.out.print(board[10*i+j]);
-    			}
-    		}
-    		System.out.println("");
-    	}
+    void printBoardConsole() {
+        System.out.println(toString());
     }
+
+//    /**
+//     * Prints the board onto the console
+//     */
+//    void printBoard() {
+//        Log.i(TAG, "printBoard: \n"+toString());
+//    }
 }
